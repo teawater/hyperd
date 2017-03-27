@@ -14,6 +14,9 @@ import (
 	"github.com/docker/docker/layer"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/chrootarchive"
+	"github.com/docker/docker/pkg/progress"
+	"github.com/docker/docker/pkg/streamformatter"
+	"github.com/docker/docker/pkg/stringid"
 	"github.com/docker/docker/pkg/symlink"
 	"github.com/docker/docker/reference"
 	digest "github.com/opencontainers/go-digest"
@@ -21,6 +24,14 @@ import (
 )
 
 func (l *tarexporter) Load(inTar io.ReadCloser, name string, refs map[string]string, outStream io.Writer) error {
+	// add progress for load image
+	var (
+		sf             = streamformatter.NewJSONStreamFormatter()
+		progressOutput progress.Output
+	)
+
+	progressOutput = sf.NewProgressOutput(outStream, false)
+
 	tmpDir, err := ioutil.TempDir("", "docker-import-")
 	if err != nil {
 		return err
@@ -39,7 +50,7 @@ func (l *tarexporter) Load(inTar io.ReadCloser, name string, refs map[string]str
 	ociLayoutFile, err := os.Open(ociLayoutPath)
 	if err == nil {
 		ociLayoutFile.Close()
-		return l.ociLoad(tmpDir, name, refs, outStream)
+		return l.ociLoad(tmpDir, name, refs, outStream, progressOutput)
 	}
 
 	// read manifest, if no file then load in legacy mode
@@ -50,7 +61,7 @@ func (l *tarexporter) Load(inTar io.ReadCloser, name string, refs map[string]str
 	manifestFile, err := os.Open(manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return l.legacyLoad(tmpDir, outStream)
+			return l.legacyLoad(tmpDir, outStream, progressOutput)
 		}
 		return manifestFile.Close()
 	}
@@ -61,10 +72,10 @@ func (l *tarexporter) Load(inTar io.ReadCloser, name string, refs map[string]str
 		return err
 	}
 
-	return l.loadHelper(tmpDir, manifest, outStream)
+	return l.loadHelper(tmpDir, manifest, outStream, progressOutput)
 }
 
-func (l *tarexporter) loadHelper(tmpDir string, manifests []manifestItem, outStream io.Writer) error {
+func (l *tarexporter) loadHelper(tmpDir string, manifests []manifestItem, outStream io.Writer, progressOutput progress.Output) error {
 	for _, m := range manifests {
 		configPath, err := safePath(tmpDir, m.Config)
 		if err != nil {
@@ -95,7 +106,7 @@ func (l *tarexporter) loadHelper(tmpDir string, manifests []manifestItem, outStr
 			r.Append(diffID)
 			newLayer, err := l.ls.Get(r.ChainID())
 			if err != nil {
-				newLayer, err = l.loadLayer(layerPath, rootFS)
+				newLayer, err = l.loadLayer(layerPath, rootFS, diffID.String(), progressOutput)
 				if err != nil {
 					return err
 				}
@@ -122,13 +133,16 @@ func (l *tarexporter) loadHelper(tmpDir string, manifests []manifestItem, outStr
 				return fmt.Errorf("invalid tag %q", repoTag)
 			}
 			l.setLoadedTag(ref, imgID, outStream)
+			logrus.Debugf("Load() - %v(%v) has been loaded.", ref, imgID)
+			sf := streamformatter.NewJSONStreamFormatter()
+			outStream.Write(sf.FormatStatus("", "%v(%v) has been loaded.", ref, imgID))
 		}
 	}
 
 	return nil
 }
 
-func (l *tarexporter) loadLayer(filename string, rootFS image.RootFS) (layer.Layer, error) {
+func (l *tarexporter) loadLayer(filename string, rootFS image.RootFS, id string, progressOutput progress.Output) (layer.Layer, error) {
 	rawTar, err := os.Open(filename)
 	if err != nil {
 		logrus.Debugf("Error reading embedded tar: %v", err)
@@ -141,6 +155,16 @@ func (l *tarexporter) loadLayer(filename string, rootFS image.RootFS) (layer.Lay
 		return nil, err
 	}
 	defer inflatedLayerData.Close()
+
+	if progressOutput != nil {
+		fileInfo, err := os.Stat(filename)
+		if err != nil {
+			logrus.Debugf("Error statting file: %v", err)
+			return nil, err
+		}
+		progressReader := progress.NewProgressReader(inflatedLayerData, progressOutput, fileInfo.Size(), stringid.TruncateID(id), "Loading layer")
+		return l.ls.Register(progressReader, rootFS.ChainID())
+	}
 
 	return l.ls.Register(inflatedLayerData, rootFS.ChainID())
 }
@@ -156,7 +180,7 @@ func (l *tarexporter) setLoadedTag(ref reference.NamedTagged, imgID image.ID, ou
 	return nil
 }
 
-func (l *tarexporter) ociLoad(tmpDir, name string, refs map[string]string, outStream io.Writer) error {
+func (l *tarexporter) ociLoad(tmpDir, name string, refs map[string]string, outStream io.Writer, progressOutput progress.Output) error {
 	if name != "" && len(refs) != 0 {
 		return fmt.Errorf("cannot load with either name and refs")
 	}
@@ -231,10 +255,10 @@ func (l *tarexporter) ociLoad(tmpDir, name string, refs map[string]string, outSt
 		})
 	}
 
-	return l.loadHelper(tmpDir, manifests, outStream)
+	return l.loadHelper(tmpDir, manifests, outStream, progressOutput)
 }
 
-func (l *tarexporter) legacyLoad(tmpDir string, outStream io.Writer) error {
+func (l *tarexporter) legacyLoad(tmpDir string, outStream io.Writer, progressOutput progress.Output) error {
 	legacyLoadedMap := make(map[string]image.ID)
 
 	dirs, err := ioutil.ReadDir(tmpDir)
@@ -245,7 +269,7 @@ func (l *tarexporter) legacyLoad(tmpDir string, outStream io.Writer) error {
 	// every dir represents an image
 	for _, d := range dirs {
 		if d.IsDir() {
-			if err := l.legacyLoadImage(d.Name(), tmpDir, legacyLoadedMap); err != nil {
+			if err := l.legacyLoadImage(d.Name(), tmpDir, legacyLoadedMap, progressOutput); err != nil {
 				return err
 			}
 		}
@@ -285,13 +309,14 @@ func (l *tarexporter) legacyLoad(tmpDir string, outStream io.Writer) error {
 				return err
 			}
 			l.setLoadedTag(ref, imgID, outStream)
+			outStream.Write(streamformatter.NewJSONStreamFormatter().FormatStatus("", "%v(%v) has been loaded.", ref, imgID))
 		}
 	}
 
 	return nil
 }
 
-func (l *tarexporter) legacyLoadImage(oldID, sourceDir string, loadedMap map[string]image.ID) error {
+func (l *tarexporter) legacyLoadImage(oldID, sourceDir string, loadedMap map[string]image.ID, progressOutput progress.Output) error {
 	if _, loaded := loadedMap[oldID]; loaded {
 		return nil
 	}
@@ -315,7 +340,7 @@ func (l *tarexporter) legacyLoadImage(oldID, sourceDir string, loadedMap map[str
 		for {
 			var loaded bool
 			if parentID, loaded = loadedMap[img.Parent]; !loaded {
-				if err := l.legacyLoadImage(img.Parent, sourceDir, loadedMap); err != nil {
+				if err := l.legacyLoadImage(img.Parent, sourceDir, loadedMap, progressOutput); err != nil {
 					return err
 				}
 			} else {
@@ -342,7 +367,7 @@ func (l *tarexporter) legacyLoadImage(oldID, sourceDir string, loadedMap map[str
 	if err != nil {
 		return err
 	}
-	newLayer, err := l.loadLayer(layerPath, *rootFS)
+	newLayer, err := l.loadLayer(layerPath, *rootFS, oldID, progressOutput)
 	if err != nil {
 		return err
 	}

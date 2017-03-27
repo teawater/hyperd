@@ -26,6 +26,8 @@ type Options struct {
 	Hosts              string
 	Mirrors            string
 	InsecureRegistries string
+	StorageDriver      string
+	GraphOptions       []string
 }
 
 func main() {
@@ -43,6 +45,10 @@ func main() {
 		glog.Errorf(err.Error())
 		return
 	}
+
+	graphOptions := []string{}
+	flag.Var(opts.NewNamedListOptsRef("storage-opts", &graphOptions, nil), "storage-opt", "Storage driver options")
+	flStorageDriver := flag.String("storage-driver", "devicemapper", "Storage driver to use")
 
 	fnd := flag.Bool("nondaemon", false, "[deprecated flag]") // TODO: remove it when 0.8 is released
 	flDisableIptables := flag.Bool("noniptables", false, "Don't enable iptables rules")
@@ -70,6 +76,8 @@ func main() {
 		Hosts:              *flHost,
 		Mirrors:            *flMirrors,
 		InsecureRegistries: *flInsecureRegistries,
+		StorageDriver:      *flStorageDriver,
+		GraphOptions:       graphOptions,
 	}
 
 	mainDaemon(opt)
@@ -88,6 +96,8 @@ Application Options:
   --insecure_registry    Enable insecure registry communication, multiple values separated by a comma
   --logtostderr          Log to standard error instead of files
   --alsologtostderr      Log to standard error as well as files
+  --storage-driver	 Storage driver to use
+  --storage-opts	 Storage driver options
 
 Help Options:
   -h, --help             Show this help message
@@ -112,6 +122,9 @@ func mainDaemon(opt *Options) {
 	}
 
 	daemon.InitDockerCfg(strings.Split(opt.Mirrors, ","), strings.Split(opt.InsecureRegistries, ","), c.StorageDriver, c.Root)
+
+	c.StorageDriver = opt.StorageDriver
+	c.GraphOptions = opt.GraphOptions
 	d, err := daemon.NewDaemon(c)
 	if err != nil {
 		glog.Errorf("The hyperd create failed, %s", err.Error())
@@ -195,6 +208,7 @@ func mainDaemon(opt *Options) {
 		}
 	}
 
+	fmt.Printf("Daemon is running\n")
 	// Daemon is fully initialized and handling API traffic
 	// Wait for serve API job to complete
 	select {

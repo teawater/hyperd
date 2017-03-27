@@ -116,6 +116,10 @@ func NewDaemon(cfg *apitypes.HyperConfig) (*Daemon, error) {
 		Host:    cfg.Host,
 	}
 
+	//important: assign GraphOptions
+	dockerCfg.GraphDriver = cfg.StorageDriver
+	dockerCfg.GraphOptions = cfg.GraphOptions
+	fmt.Printf("dockerCfg.GraphDriver:%v dockerCfg.GraphOptions:%v\n", dockerCfg.GraphDriver, dockerCfg.GraphOptions)
 	daemon.Daemon, err = docker.NewDaemon(dockerCfg, registryCfg)
 	if err != nil {
 		return nil, err
