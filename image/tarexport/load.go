@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/image"
@@ -405,5 +406,8 @@ func (l *tarexporter) legacyLoadImage(oldID, sourceDir string, loadedMap map[str
 }
 
 func safePath(base, path string) (string, error) {
+	logrus.Debugf("[load.go] safePath() - base:%v (origin)path:%v", base, path)
+	path = strings.Join(strings.Split(path,"\\"), string(os.PathSeparator))
+	logrus.Debugf("[load.go] safePath() - base:%v (new)path:%v", base, path)
 	return symlink.FollowSymlinkInScope(filepath.Join(base, path), base)
 }
