@@ -1,9 +1,13 @@
 #!/bin/bash
 
-BASE_DIR=$(dirname $(readlink -f $0))
+if [ $# -ne 1 ];then
+  echo "./start_vm.sh <pod-name>"
+  exit 1
+fi
 
+BASE_DIR=$(dirname $(readlink -f $0))
 BOOT_DISK=/home/osboxes/iso/NanoBoot.raw
-POD_ID=nano-iis
+POD_ID=$1
 DM_DEV=`${BASE_DIR}/script/get_pod_dm.py ${POD_ID} device`
 VM_ID=`${BASE_DIR}/script/get_pod_dm.py ${POD_ID} vmid`
 

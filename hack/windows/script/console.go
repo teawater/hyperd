@@ -28,9 +28,20 @@ func reader(r io.Reader, c chan int) {
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Printf("%v <vmid>", os.Args[0])
+	if len(os.Args) < 4 {
+		fmt.Printf("%v <hostname> <vmid> <command>\n", os.Args[0])
 		os.Exit(1)
+	}
+
+	hostname := os.Args[1]
+	vmid := os.Args[2]
+	cmd := strings.Join(os.Args[3:], " ")
+	interactive := false
+	shell := ""
+
+	if cmd == "powershell" || cmd == "cmd" {
+		interactive = true
+		shell = cmd
 	}
 
 	var (
@@ -38,13 +49,14 @@ func main() {
 		tty net.Conn
 		err error
 	)
-	ctl, err = net.Dial("unix", fmt.Sprintf("/var/run/hyper/%s/win_ctl.sock", os.Args[1]))
+
+	ctl, err = net.Dial("unix", fmt.Sprintf("/var/run/hyper/%s/win_ctl.sock", vmid))
 	if err != nil {
 		panic(err)
 	}
 	defer ctl.Close()
 
-	tty, err = net.Dial("unix", fmt.Sprintf("/var/run/hyper/%s/win_tty.sock", os.Args[1]))
+	tty, err = net.Dial("unix", fmt.Sprintf("/var/run/hyper/%s/win_tty.sock", vmid))
 	if err != nil {
 		panic(err)
 	}
@@ -54,18 +66,33 @@ func main() {
 	go reader(tty, c)
 
 	for {
-		cmd := "powershell Get-Process\n"
-		fmt.Printf("\n>%v", cmd)
+		if interactive {
+			cmd = ""
+			fmt.Printf("\n%v>", hostname)
+			fmt.Scanf("%s", &cmd)
+			if cmd == "quit" || cmd == "exit" {
+				break
+			}
+			switch shell {
+			case "powershell":
+				cmd = fmt.Sprintf("%s %s", shell, cmd)
+			case "cmd":
+				cmd = fmt.Sprintf("%s /c %s", shell, cmd)
+			}
+		}
+		cmd = fmt.Sprintf("%s\n", cmd)
 		_, err := ctl.Write([]byte(cmd))
 		if err != nil {
 			fmt.Printf("write error:", err)
 			break
 		}
 		i := <-c
-		if i == 0 {
-			fmt.Printf("\nOK\n")
-		} else {
+		if i != 0 {
 			fmt.Printf("\nFailed\n")
+		}
+
+		if !interactive {
+			break
 		}
 	}
 }
