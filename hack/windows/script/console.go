@@ -2,12 +2,13 @@ package main
 
 import (
 	"bytes"
-	"bufio"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"strings"
+
+	"github.com/carmark/pseudo-terminal-go/terminal"
 )
 
 func reader(r io.Reader, c chan int) {
@@ -26,6 +27,58 @@ func reader(r io.Reader, c chan int) {
 			c <- 0
 		}
 	}
+}
+
+func interactive_exec(ctl net.Conn, c chan int, hostname *string, shell *string) error {
+	//fmt.Printf("[debug] interactive_exec\n")
+
+	term, err := terminal.NewWithStdInOut()
+	if err != nil {
+		panic(err)
+	}
+	defer term.ReleaseFromStdInOut() // defer this
+	fmt.Println("Ctrl-D/exit/quit to break")
+	term.SetPrompt(fmt.Sprintf("%s C:\\Windows\\system32>", *hostname))
+	line, err := term.ReadLine()
+	for {
+		if err == io.EOF {
+			term.Write([]byte(line))
+			fmt.Println()
+			return nil
+		}
+		if (err != nil && strings.Contains(err.Error(), "control-c break")) || len(line) == 0 {
+			line, err = term.ReadLine()
+		} else if line == "exit" || line == "quit" {
+			break
+		} else {
+			//term.Write([]byte(line+"\r\n"))
+			cmd := ""
+			switch *shell {
+			case "powershell":
+				cmd = fmt.Sprintf("%s %s\r\n", *shell, line)
+			case "cmd":
+				cmd = fmt.Sprintf("%s /c %s\r\n", *shell, line)
+			}
+			noninteractive_exec(ctl, c, &cmd)
+			line, err = term.ReadLine()
+		}
+	}
+
+	return nil
+}
+
+func noninteractive_exec(ctl net.Conn, c chan int, cmd *string) error {
+	//fmt.Printf("[debug] noninteractive_exec\n")
+	_, err := ctl.Write([]byte(*cmd))
+	if err != nil {
+		fmt.Printf("write error:", err)
+		return err
+	}
+	i := <-c
+	if i != 0 {
+		fmt.Printf("\nFailed\n")
+	}
+	return nil
 }
 
 func main() {
@@ -49,7 +102,6 @@ func main() {
 		ctl net.Conn
 		tty net.Conn
 		err error
-		inputReader *bufio.Reader
 	)
 
 	ctl, err = net.Dial("unix", fmt.Sprintf("/var/run/hyper/%s/win_ctl.sock", vmid))
@@ -67,35 +119,9 @@ func main() {
 	c := make(chan int)
 	go reader(tty, c)
 
-	for {
-		if interactive {
-			cmd = ""
-			inputReader = bufio.NewReader(os.Stdin)
-			fmt.Printf("\n%v>", hostname)			
-			cmd, err = inputReader.ReadString('\n')
-			if cmd == "quit\n" || cmd == "exit\n" {
-				break
-			}
-			switch shell {
-			case "powershell":
-				cmd = fmt.Sprintf("%s %s", shell, cmd)
-			case "cmd":
-				cmd = fmt.Sprintf("%s /c %s", shell, cmd)
-			}
-		}
-		//fmt.Printf("\n[debug] cmd:[%v]\n", cmd)
-		_, err := ctl.Write([]byte(cmd))
-		if err != nil {
-			fmt.Printf("write error:", err)
-			break
-		}
-		i := <-c
-		if i != 0 {
-			fmt.Printf("\nFailed\n")
-		}
-
-		if !interactive {
-			break
-		}
+	if interactive {
+		interactive_exec(ctl, c, &hostname, &shell)
+	} else {
+		noninteractive_exec(ctl, c, &cmd)
 	}
 }
