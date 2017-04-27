@@ -14,4 +14,4 @@ VM_ID=`${BASE_DIR}/script/get_pod_dm.py ${POD_ID} vmid`
 HOST_NAME=`${BASE_DIR}/script/get_pod_dm.py ${POD_ID} hostname`
 
 # exec
-${BASE_DIR}/script/console ${HOST_NAME} ${VM_ID} $@
+${BASE_DIR}/script/console ${HOST_NAME} ${VM_ID} "$@"

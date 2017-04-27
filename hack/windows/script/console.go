@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"bufio"
 	"fmt"
 	"io"
 	"net"
@@ -48,6 +49,7 @@ func main() {
 		ctl net.Conn
 		tty net.Conn
 		err error
+		inputReader *bufio.Reader
 	)
 
 	ctl, err = net.Dial("unix", fmt.Sprintf("/var/run/hyper/%s/win_ctl.sock", vmid))
@@ -68,9 +70,10 @@ func main() {
 	for {
 		if interactive {
 			cmd = ""
-			fmt.Printf("\n%v>", hostname)
-			fmt.Scanf("%s", &cmd)
-			if cmd == "quit" || cmd == "exit" {
+			inputReader = bufio.NewReader(os.Stdin)
+			fmt.Printf("\n%v>", hostname)			
+			cmd, err = inputReader.ReadString('\n')
+			if cmd == "quit\n" || cmd == "exit\n" {
 				break
 			}
 			switch shell {
@@ -80,7 +83,7 @@ func main() {
 				cmd = fmt.Sprintf("%s /c %s", shell, cmd)
 			}
 		}
-		cmd = fmt.Sprintf("%s\n", cmd)
+		//fmt.Printf("\n[debug] cmd:[%v]\n", cmd)
 		_, err := ctl.Write([]byte(cmd))
 		if err != nil {
 			fmt.Printf("write error:", err)
