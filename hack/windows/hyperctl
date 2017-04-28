@@ -1,0 +1,56 @@
+#!/bin/bash
+
+set -e
+
+BASE_DIR=$(dirname $(readlink -f $0))
+HYPERCTL=${BASE_DIR}/../../hyperctl
+
+# do load, images, ps, create, rm via hyperctl
+function do_action () {
+  sudo ${HYPERCTL} $@
+}
+
+# do start via shell
+function do_start () {
+  sudo ${BASE_DIR}/script/start_vm_nano.sh $@
+}
+
+# do exec via shell + console.go
+function do_exec () {
+  sudo ${BASE_DIR}/script/exec_vm.sh $@
+}
+
+function show_usage(){
+  cat <<EOF
+usage: ./hyperctl <action> [option]
+<action>:
+  load		load windows docker image
+  images	show images
+  list		show container
+  create	create windows container
+  start		start windows container
+  rm		delete windows container
+  exec		execute command in windows container
+EOF
+  exit 1
+}
+
+######################
+# main        
+######################
+case $1 in
+load|images|list|create|rm)
+	do_action $@
+	;;
+start)
+	shift
+	do_start $@
+	;;
+exec)
+	shift
+	do_exec $@
+	;;
+*)
+	show_usage
+esac
+

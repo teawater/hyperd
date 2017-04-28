@@ -1,2 +1,3 @@
 script/get_pod_dm
 script/console
+.*.log

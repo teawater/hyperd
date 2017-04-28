@@ -1,0 +1,14 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase]
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DriverFiles]
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DriverFiles\parport.sys]
+@="msports.inf"
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DriverFiles\serenum.sys]
+@="msports.inf"
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DriverFiles\serial.sys]
+@="msports.inf"
