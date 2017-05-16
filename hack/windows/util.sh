@@ -54,6 +54,11 @@ function do_createtap(){
   done
 }
 
+function do_startnano2k16(){
+  sudo PS4='Line ${LINENO}: ' ${BASE_DIR}/script/start_vm_nano_2k16.sh
+}
+
+
 function show_usage(){
   cat <<EOF 
 ./util.sh <action> <pid-id>
@@ -68,12 +73,13 @@ function show_usage(){
   startkd       start nanoserver with qemu for kernel debug
   starttest     start nanoserver with qemu(connect remote serial port)
   createtap     create tap1 and tap2
+  startnano2k16 start nanoserver(from win2k16) with qemu
 EOF
   exit 1
 }
 
 #### main ####
-if [ $# -ne 2 -a $1 != "createtap" ];then
+if [ $# -ne 2 -a $1 != "createtap" -a $1 != "startnano2k16" ];then
    show_usage
 fi
 
@@ -107,6 +113,9 @@ starttest)
 	;;
 createtap)
 	do_createtap
+	;;
+startnano2k16)
+	do_startnano2k16
 	;;
 *)
 	show_usage

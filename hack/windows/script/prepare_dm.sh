@@ -62,6 +62,8 @@ cp ${BASE_DIR}/../hives/Software_Base ${MNT_NTFS}/Windows/System32/config/SOFTWA
 cp ${BASE_DIR}/../hives/Security_Base ${MNT_NTFS}/Windows/System32/config/SECURITY -rf
 cp ${BASE_DIR}/../hives/Sam_Base ${MNT_NTFS}/Windows/System32/config/SAM -rf
 cp ${BASE_DIR}/../hives/DefaultUser_Base ${MNT_NTFS}/Windows/System32/config/DEFAULT -rf
+ls -l ${MNT_NTFS}/Windows/System32/config/{SYSTEM,SOFTWARE,SECURITY,SAM,DEFAULT}
+
 
 echo "######################################"
 echo "# replace computername in registry"
@@ -77,13 +79,13 @@ set +e
 echo "====================================================================="
 ${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/HyperStartService.reg
 echo "====================================================================="
-${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/PNP0501.reg
-echo "====================================================================="
-${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/Serial.reg
-echo "====================================================================="
 ${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/hostname.reg
 echo "====================================================================="
 ${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/DRIVERS 'HKEY_LOCAL_MACHINE\DRIVERS' ${MNT_NTFS}/hyper/reg/DriverFiles.reg
+echo "====================================================================="
+${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/Serial.reg
+echo "====================================================================="
+${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/PNP0501.reg
 echo "====================================================================="
 #${REGED} -I -E -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/W3SVC.reg
 set -e
@@ -99,6 +101,8 @@ echo "====================================================================="
 echo -e 'cd \\\\ControlSet001\\\\Enum\\\\ACPI\\\\PNP0501\nls\n' | sudo regshell -F ${MNT_NTFS}/Windows/System32/config/SYSTEM
 echo "====================================================================="
 echo -e 'cd \\\\ControlSet001\\\\Enum\\\\ACPI\\\\PNP0501\\\\1\nls\n' | sudo regshell -F ${MNT_NTFS}/Windows/System32/config/SYSTEM
+echo "====================================================================="
+echo -e 'cd \\\\ControlSet001\\\\Enum\\\\ACPI\\\\PNP0501\\\\2\nls\n' | sudo regshell -F ${MNT_NTFS}/Windows/System32/config/SYSTEM
 echo "====================================================================="
 echo -e 'cd \\\\DriverDatabase\\\\DriverFiles\\\\serial.sys\nls\n' | sudo regshell -F ${MNT_NTFS}/Windows/System32/config/DRIVERS
 echo "====================================================================="
