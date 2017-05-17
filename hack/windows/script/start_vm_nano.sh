@@ -49,7 +49,7 @@ cd ${ISO_DIR}
 echo ${POD_ID}
 qemu-system-x86_64 -enable-kvm -smp 1 -m 1024 \
   -netdev tap,id=network0,ifname=tap1,script=no,downscript=no \
-  -device e1000,netdev=network0,mac=00:16:35:AF:94:4B \
+  -device virtio-net-pci,netdev=network0,mac=00:16:35:AF:94:4B \
   -bios /usr/share/edk2.git/ovmf-x64/OVMF-pure-efi.fd \
   -machine vmport=off \
   -boot order=c,menu=off \
