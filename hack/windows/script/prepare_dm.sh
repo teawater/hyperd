@@ -87,6 +87,8 @@ ${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SY
 echo "====================================================================="
 ${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/PNP0501.reg
 echo "====================================================================="
+${REGED} -I -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/system_virtio.reg
+echo "====================================================================="
 #${REGED} -I -E -C ${MNT_NTFS}/Windows/System32/config/SYSTEM 'HKEY_LOCAL_MACHINE\SYSTEM' ${MNT_NTFS}/hyper/reg/W3SVC.reg
 set -e
 

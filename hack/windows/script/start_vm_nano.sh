@@ -48,14 +48,13 @@ cd ${ISO_DIR}
 
 echo ${POD_ID}
 qemu-system-x86_64 -enable-kvm -smp 1 -m 1024 \
-  -netdev tap,id=network0,ifname=tap1,script=no,downscript=no \
-  -device virtio-net-pci,netdev=network0,mac=00:16:35:AF:94:4B \
   -bios /usr/share/edk2.git/ovmf-x64/OVMF-pure-efi.fd \
   -machine vmport=off \
   -boot order=c,menu=off \
   -drive file=${BOOT_DISK},format=raw \
   -drive file=${DM_DEV},format=raw \
   -vnc :8 \
+  -qmp unix:/var/run/hyper/${VM_ID}/win_qmp.sock,server,nowait \
   -serial unix:/var/run/hyper/${VM_ID}/win_ctl.sock,server,nowait \
   -serial unix:/var/run/hyper/${VM_ID}/win_tty.sock,server,nowait &
 

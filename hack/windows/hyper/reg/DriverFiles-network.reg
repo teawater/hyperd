@@ -1,0 +1,25 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\DRIVERS]
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase]
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DriverFiles]
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DriverFiles\netkvm.sys]
+@="netkvm.inf"
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DriverFiles\Rtnic64.sys]
+@="netrtl64.inf"
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DriverFiles\E1G6032E.sys]
+@="nete1g3e.inf"
+
+[HKEY_LOCAL_MACHINE\DRIVERS\DriverDatabase\DeviceIds\{4d36e972-e325-11ce-bfc1-08002be10318}]
+"kdnic.inf"=hex(0):
+"oem1.inf"=hex(0):
+"oem2.inf"=hex(0):
+"oem3.inf"=hex(0):
+"netkvm.inf"=hex(0):
+"netrtl64.inf"=hex(0):
+"nete1g3e.inf"=hex(0):

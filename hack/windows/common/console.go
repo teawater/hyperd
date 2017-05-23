@@ -17,7 +17,7 @@ func reader(r io.Reader, c chan int) {
 	for {
 		n, err := r.Read(tmp[:])
 		if err != nil {
-			fmt.Printf("err:%v", err.Error())
+			fmt.Printf("n:%v, err:%v", n, err.Error())
 			c <- 1
 			return
 		}
