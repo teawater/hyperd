@@ -11,30 +11,33 @@ import (
 	"github.com/chzyer/readline"
 )
 
-func reader(r io.Reader, c chan int) {
+var gPrompt = ""
+var gHostname = ""
+
+func reader(r io.Reader, c chan int, d chan string) {
 	tmp := make([]byte, 65535)
 	var buf bytes.Buffer
 	for {
 		n, err := r.Read(tmp[:])
 		if err != nil {
-			fmt.Printf("n:%v, err:%v", n, err.Error())
-			c <- 1
-			return
+			//fmt.Printf("n:%v, err:%v", n, err.Error())
+			os.Exit(1)
 		}
 		buf.WriteString(string(tmp[:n]))
 		if strings.HasSuffix(buf.String(), "\n\nDONE\n\n") {
-			fmt.Printf("%v", strings.Replace(buf.String(), "\n\nDONE\n\n", "", -1))
+			//fmt.Printf("%v", strings.Replace(buf.String(), "\n\nDONE\n\n", "", -1))
 			c <- 0
+			d <- fmt.Sprintf("%v", strings.Replace(buf.String(), "\n\nDONE\n\n", "", -1))
 			buf.Reset()
 		}
 	}
 }
 
-func interactive_exec(ctl net.Conn, c chan int, hostname string, shell string) error {
+func interactive_exec(ctl net.Conn, c chan int, d chan string, hostname string, shell string) error {
 	//fmt.Printf("[debug] interactive_exec\n")
 
 	l, err := readline.NewEx(&readline.Config{
-		Prompt:            fmt.Sprintf("%v C:\\Windows\\System32>", hostname),
+		Prompt:            fmt.Sprintf("%v%v>", hostname, gPrompt),
 		HistoryFile:       "/tmp/demo-history.tmp",
 		InterruptPrompt:   "^C",
 		EOFPrompt:         "exit",
@@ -71,25 +74,48 @@ func interactive_exec(ctl net.Conn, c chan int, hostname string, shell string) e
 			case "cmd":
 				cmd = fmt.Sprintf("%s /c %s\n", shell, line)
 			}
-			noninteractive_exec(ctl, c, cmd)
+			noninteractive_exec(ctl, c, d, cmd)
 		}
 	}
 exit:
 	return nil
 }
 
-func noninteractive_exec(ctl net.Conn, c chan int, cmd string) error {
+func noninteractive_exec(ctl net.Conn, c chan int, d chan string, cmd string) error {
 	//fmt.Printf("[debug] noninteractive_exec - cmd: [%v]\n", cmd)
 	_, err := ctl.Write([]byte(cmd))
 	if err != nil {
 		fmt.Printf("write error:", err)
 		return err
 	}
+
 	i := <-c
 	if i != 0 {
 		fmt.Printf("\nFailed\n")
+		os.Exit(1)
 	}
+
+	rlt := <-d
+
+	switch cmd {
+	case "cmd /c cd":
+		gPrompt = fmt.Sprint(substr(rlt, 0, len(rlt)-2))
+	case "cmd /c hostname":
+		gHostname = fmt.Sprint(substr(rlt, 0, len(rlt)-2))
+	default:
+		fmt.Printf("%v", rlt)
+	}
+
 	return nil
+}
+
+func substr(s string, pos, length int) string {
+	runes := []rune(s)
+	l := pos + length
+	if l > len(runes) {
+		l = len(runes)
+	}
+	return string(runes[pos:l])
 }
 
 func main() {
@@ -128,11 +154,20 @@ func main() {
 	defer tty.Close()
 
 	c := make(chan int)
-	go reader(tty, c)
+	d := make(chan string)
+	go reader(tty, c, d)
 
 	if interactive {
-		interactive_exec(ctl, c, hostname, shell)
+		noninteractive_exec(ctl, c, d, "cmd /c hostname")
+		noninteractive_exec(ctl, c, d, "cmd /c cd")
+		//hostname = gHostname
+		if shell == "powershell" {
+			hostname = "PS "
+		} else {
+			hostname = ""
+		}
+		interactive_exec(ctl, c, d, hostname, shell)
 	} else {
-		noninteractive_exec(ctl, c, cmd)
+		noninteractive_exec(ctl, c, d, cmd)
 	}
 }
