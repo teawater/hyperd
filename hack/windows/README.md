@@ -69,7 +69,7 @@ cd hack/windows
 ./util.sh starttest nano-demo
 
 5. start container vm
-./hyperctl start naon-demo
+./hyperctl start nano-demo
 ./util.sh showsock nano-demo
 
 6. disable driver signature enforcement (via VNC viewer)

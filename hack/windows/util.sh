@@ -61,7 +61,7 @@ function do_startnano2k16(){
 
 function show_usage(){
   cat <<EOF 
-./util.sh <action> <pid-id>
+./util.sh <action> <pod-id>
 <action>:
   showdev	show devicemapper device of pod
   showsock      show unix sock file for pod
@@ -79,7 +79,7 @@ EOF
 }
 
 #### main ####
-if [ $# -ne 2 -a $1 != "createtap" -a $1 != "startnano2k16" ];then
+if [[ $# -ne 2 ]] && [[ $1 != "createtap" ]] && [[ $1 != "startnano2k16" ]];then
    show_usage
 fi
 
