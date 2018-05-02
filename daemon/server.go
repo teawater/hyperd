@@ -77,7 +77,7 @@ func (daemon *Daemon) CreateContainerInPod(podId string, spec *apitypes.UserCont
 		return "", fmt.Errorf("The pod(%s) can not be found", podId)
 	}
 
-	return p.ContainerCreate(spec)
+	return p.ContainerCreate(spec, daemon.EnableEngineId)
 }
 
 func (daemon *Daemon) StartContainer(containerId string) error {

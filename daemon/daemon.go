@@ -33,19 +33,20 @@ var (
 
 type Daemon struct {
 	*docker.Daemon
-	ID         string
-	db         *daemondb.DaemonDB
-	PodList    *pod.PodList
-	Factory    factory.Factory
-	Host       string
-	Storage    Storage
-	Hypervisor string
-	DefaultLog *pod.GlobalLogConfig
+	ID             string
+	db             *daemondb.DaemonDB
+	PodList        *pod.PodList
+	Factory        factory.Factory
+	Host           string
+	Storage        Storage
+	Hypervisor     string
+	DefaultLog     *pod.GlobalLogConfig
+	EnableEngineId bool
 }
 
 func (daemon *Daemon) Restore() error {
 	//try to migrate lagecy data first
-	err := pod.MigrateLagecyPersistentData(daemon.db, func() *pod.PodFactory {
+	err := pod.MigrateLagecyPersistentData(daemon.db, daemon.EnableEngineId, func() *pod.PodFactory {
 		return pod.NewPodFactory(daemon.Factory, daemon.PodList, daemon.db, daemon.Storage, daemon.Daemon, daemon.DefaultLog)
 	})
 	if err != nil {
@@ -113,10 +114,11 @@ func NewDaemon(cfg *apitypes.HyperConfig) (*Daemon, error) {
 	}
 
 	daemon := &Daemon{
-		ID:      fmt.Sprintf("%d", os.Getpid()),
-		db:      db,
-		PodList: pod.NewPodList(),
-		Host:    cfg.Host,
+		ID:             fmt.Sprintf("%d", os.Getpid()),
+		db:             db,
+		PodList:        pod.NewPodList(),
+		Host:           cfg.Host,
+		EnableEngineId: cfg.EnableEngineId,
 	}
 
 	daemon.Daemon, err = docker.NewDaemon(dockerCfg, registryCfg)

@@ -65,6 +65,8 @@ type Container struct {
 
 	logger    LogStatus
 	logPrefix string
+
+	EngineId string
 }
 
 func newContainerStatus() *ContainerStatus {
@@ -78,11 +80,12 @@ func newContainerStatus() *ContainerStatus {
 	return cs
 }
 
-func newContainer(p *XPod, spec *apitypes.UserContainer, create bool) (*Container, error) {
+func newContainer(p *XPod, spec *apitypes.UserContainer, create bool, engineId string) (*Container, error) {
 	c := &Container{
-		p:      p,
-		spec:   spec,
-		status: newContainerStatus(),
+		p:        p,
+		spec:     spec,
+		status:   newContainerStatus(),
+		EngineId: engineId,
 	}
 	c.updateLogPrefix()
 	if err := c.init(create); err != nil {
@@ -385,7 +388,7 @@ func (c *Container) init(allowCreate bool) error {
 		return err
 	}
 
-	if c.spec.Id != "" {
+	if c.EngineId != "" {
 		cjson = c.loadJson()
 		// if label tagged this is a new container, should set `loaded` false
 		loaded = true
@@ -437,7 +440,7 @@ func (c *Container) init(allowCreate bool) error {
 
 func (c *Container) loadJson() *dockertypes.ContainerJSON {
 	c.Log(TRACE, "Loading container")
-	if r, err := c.p.factory.engine.ContainerInspect(c.spec.Id, false, version.Version("1.21")); err == nil {
+	if r, err := c.p.factory.engine.ContainerInspect(c.EngineId, false, version.Version("1.21")); err == nil {
 		rsp, ok := r.(*dockertypes.ContainerJSON)
 		if !ok {
 			c.Log(ERROR, "fail to got loaded container info: %v", r)
@@ -500,7 +503,7 @@ func (c *Container) createByEngine() (*dockertypes.ContainerJSON, error) {
 		return nil, err
 	}
 
-	c.Log(INFO, "create container %s (w/: %s)", ccs.ID, ccs.Warnings)
+	c.Log(INFO, "create container %s EngineId %s (w/: %s)", c.spec.Id, ccs.ID, ccs.Warnings)
 	if r, err = c.p.factory.engine.ContainerInspect(ccs.ID, false, version.Version("1.21")); err != nil {
 		return nil, err
 	}
@@ -510,7 +513,10 @@ func (c *Container) createByEngine() (*dockertypes.ContainerJSON, error) {
 		return nil, err
 	}
 
-	c.spec.Id = ccs.ID
+	c.EngineId = ccs.ID
+	if c.spec.Id == "" {
+		c.spec.Id = c.EngineId
+	}
 	c.updateLogPrefix()
 	return rsp, nil
 }
@@ -1178,7 +1184,7 @@ func (c *Container) rename(name string) error {
 }
 
 func (c *Container) removeFromEngine() error {
-	return c.p.factory.engine.ContainerRm(c.Id(), &dockertypes.ContainerRmConfig{})
+	return c.p.factory.engine.ContainerRm(c.EngineId, &dockertypes.ContainerRmConfig{})
 }
 
 // container status transition

@@ -13,13 +13,14 @@ import (
 	"github.com/hyperhq/hyperd/utils"
 	runv "github.com/hyperhq/runv/api"
 	"github.com/hyperhq/runv/hypervisor"
+	"github.com/docker/docker/pkg/stringid"
 )
 
 var (
 	ProvisionTimeout = 5 * time.Minute
 )
 
-func CreateXPod(factory *PodFactory, spec *apitypes.UserPod) (*XPod, error) {
+func CreateXPod(factory *PodFactory, spec *apitypes.UserPod, enableEngineId bool) (*XPod, error) {
 
 	p, err := newXPod(factory, spec)
 	if err != nil {
@@ -45,7 +46,7 @@ func CreateXPod(factory *PodFactory, spec *apitypes.UserPod) (*XPod, error) {
 		}
 	}()
 
-	err = p.initResources(spec, true)
+	err = p.initResources(spec, true, enableEngineId)
 	if err != nil {
 		return nil, err
 	}
@@ -106,9 +107,15 @@ func newXPod(factory *PodFactory, spec *apitypes.UserPod) (*XPod, error) {
 	return p, nil
 }
 
-func (p *XPod) ContainerCreate(c *apitypes.UserContainer) (string, error) {
+func (p *XPod) ContainerCreate(c *apitypes.UserContainer, enableEngineId bool) (string, error) {
 	if !p.IsAlive() {
 		err := fmt.Errorf("pod is not running")
+		p.Log(ERROR, err)
+		return "", err
+	}
+
+	if enableEngineId && c.Id != "" {
+		err := fmt.Errorf("EnableEngineId hyperd cannot create container %s that has Id", c.Name)
 		p.Log(ERROR, err)
 		return "", err
 	}
@@ -127,6 +134,10 @@ func (p *XPod) ContainerCreate(c *apitypes.UserContainer) (string, error) {
 		return "", nil
 	}
 
+	if enableEngineId {
+		c.Id = stringid.GenerateNonCryptoID()
+	}
+
 	p.resourceLock.Lock()
 	id, err := p.doContainerCreate(c)
 	p.factory.registry.ReserveContainerID(c.Id, p.Id())
@@ -136,7 +147,7 @@ func (p *XPod) ContainerCreate(c *apitypes.UserContainer) (string, error) {
 }
 
 func (p *XPod) doContainerCreate(c *apitypes.UserContainer) (string, error) {
-	pc, err := newContainer(p, c, true)
+	pc, err := newContainer(p, c, true, "")
 	if err != nil {
 		p.Log(ERROR, "failed to create container %s: %v", c.Name, err)
 		return "", err
@@ -359,9 +370,18 @@ func (p *XPod) releaseNames(containers []*apitypes.UserContainer) {
 //
 // This function will do resource op and update the spec. and won't
 // access sandbox.
-func (p *XPod) initResources(spec *apitypes.UserPod, allowCreate bool) error {
+func (p *XPod) initResources(spec *apitypes.UserPod, allowCreate, enableEngineId bool) error {
 	for _, cspec := range spec.Containers {
-		c, err := newContainer(p, cspec, allowCreate)
+		if enableEngineId {
+			if cspec.Id == "" {
+				cspec.Id = stringid.GenerateNonCryptoID()
+			} else {
+				err := fmt.Errorf("EnableEngineId hyperd cannot create container %s that has Id", cspec.Name)
+				p.Log(ERROR, "%v", err)
+				return err
+			}
+		}
+		c, err := newContainer(p, cspec, allowCreate, "")
 		if err != nil {
 			return err
 		}

@@ -14,7 +14,7 @@ import (
 )
 
 // MigrateLagecyData migrate lagecy persistence data to current layout.
-func MigrateLagecyPersistentData(db *daemondb.DaemonDB, podFactory func() *PodFactory) (err error) {
+func MigrateLagecyPersistentData(db *daemondb.DaemonDB, enableEngineId bool, podFactory func() *PodFactory) (err error) {
 	num := 0
 	count := 0
 	defer func() {
@@ -68,7 +68,7 @@ func MigrateLagecyPersistentData(db *daemondb.DaemonDB, podFactory func() *PodFa
 			return err
 		}
 
-		if err = persistLagecyPod(factory, &podSpec); err != nil {
+		if err = persistLagecyPod(factory, &podSpec, enableEngineId); err != nil {
 			return err
 		}
 
@@ -190,12 +190,12 @@ func setupContanerID(factory *PodFactory, podID string, spec *apitypes.UserPod) 
 	return nil
 }
 
-func persistLagecyPod(factory *PodFactory, spec *apitypes.UserPod) error {
+func persistLagecyPod(factory *PodFactory, spec *apitypes.UserPod, enableEngineId bool) error {
 	p, err := newXPod(factory, spec)
 	if err != nil {
 		return err
 	}
-	if err = p.initResources(spec, false); err != nil {
+	if err = p.initResources(spec, false, enableEngineId); err != nil {
 		return err
 	}
 

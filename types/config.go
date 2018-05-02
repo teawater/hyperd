@@ -28,6 +28,7 @@ type HyperConfig struct {
 	EnableVsock     bool
 	DefaultLog      string
 	DefaultLogOpt   map[string]string
+	EnableEngineId  bool
 
 	logPrefix string
 }
@@ -70,6 +71,7 @@ func NewHyperConfig(config string) *HyperConfig {
 	c.DefaultLogOpt, _ = cfg.GetSection("Log")
 	c.VmFactoryPolicy, _ = cfg.GetValue(goconfig.DEFAULT_SECTION, "VmFactoryPolicy")
 	c.GRPCHost, _ = cfg.GetValue(goconfig.DEFAULT_SECTION, "gRPCHost")
+	c.EnableEngineId = cfg.MustBool(goconfig.DEFAULT_SECTION, "EnableEngineId", false)
 
 	c.Log(hlog.INFO, "config items: %#v", c)
 	return c

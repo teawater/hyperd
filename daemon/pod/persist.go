@@ -351,7 +351,7 @@ func (p *XPod) removePortMappingFromDB() error {
 
 func (c *Container) saveContainer() error {
 	cx := &types.PersistContainer{
-		Id:       c.Id(),
+		Id:       c.EngineId,
 		Pod:      c.p.Id(),
 		Spec:     c.spec,
 		Descript: c.descript,
@@ -365,7 +365,7 @@ func (p *XPod) loadContainer(id string) error {
 	if err != nil {
 		return err
 	}
-	c, err := newContainer(p, cx.Spec, false)
+	c, err := newContainer(p, cx.Spec, false, cx.Id)
 	if err != nil {
 		p.Log(ERROR, "failed to reload container %s from spec: %v", id, err)
 		return err

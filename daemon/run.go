@@ -29,7 +29,7 @@ func (daemon *Daemon) CreatePod(podId string, podSpec *apitypes.UserPod) (*pod.X
 
 	factory := pod.NewPodFactory(daemon.Factory, daemon.PodList, daemon.db, daemon.Storage, daemon.Daemon, daemon.DefaultLog)
 
-	p, err := pod.CreateXPod(factory, podSpec)
+	p, err := pod.CreateXPod(factory, podSpec, daemon.EnableEngineId)
 	if err != nil {
 		glog.Errorf("%s: failed to add pod: %v", podSpec.Id, err)
 		return nil, err

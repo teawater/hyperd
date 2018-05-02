@@ -73,9 +73,9 @@ func (p *XPod) Remove(force bool) error {
 
 	os.RemoveAll(path.Join(utils.HYPER_ROOT, "hosts", p.Id()))
 
-	for id, c := range p.containers {
-		p.factory.registry.ReleaseContainer(id, c.SpecName())
-		p.factory.engine.ContainerRm(id, &dockertypes.ContainerRmConfig{false, false, false})
+	for _, c := range p.containers {
+		p.factory.registry.ReleaseContainer(c.EngineId, c.SpecName())
+		p.factory.engine.ContainerRm(c.EngineId, &dockertypes.ContainerRmConfig{false, false, false})
 	}
 
 	//remove pod(including all containers/volumes/interfaces) in daemondb
@@ -269,12 +269,12 @@ func (p *XPod) RemoveContainer(id string) error {
 			return err
 		}
 	}
-	err = p.factory.engine.ContainerRm(id, &dockertypes.ContainerRmConfig{})
+	err = p.factory.engine.ContainerRm(c.EngineId, &dockertypes.ContainerRmConfig{})
 	if err != nil {
 		c.Log(ERROR, "failed to remove container through engine")
 		return err
 	}
-	p.factory.registry.ReleaseContainer(id, c.SpecName())
+	p.factory.registry.ReleaseContainer(c.EngineId, c.SpecName())
 	delete(p.containers, id)
 
 	//remove volumes from daemondb
