@@ -337,6 +337,28 @@ func (p *XPod) initPodInfo() {
 	p.info = info
 }
 
+func (p *XPod) getSnapContainers() []*Container {
+	p.statusLock.RLock()
+	defer p.statusLock.RUnlock()
+
+	containers := make([]*Container, 0, len(p.snapContainers))
+	for _, c := range p.snapContainers {
+		containers = append(containers, c)
+	}
+	return containers
+}
+
+func (p *XPod) getSnapVolumes() []*apitypes.PodVolume {
+	p.statusLock.RLock()
+	defer p.statusLock.RUnlock()
+
+	volumes := make([]*apitypes.PodVolume, 0, len(p.snapVolumes))
+	for _, v := range p.snapVolumes {
+		volumes = append(volumes, v)
+	}
+	return volumes
+}
+
 func (p *XPod) updatePodInfo() error {
 	p.statusLock.RLock()
 	defer p.statusLock.RUnlock()
